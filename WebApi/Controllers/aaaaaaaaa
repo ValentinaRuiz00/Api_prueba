@@ -1,12 +1,51 @@
-CREATE TABLE ProductoVa(
-IdProducto INT IDENTITY PRIMARY KEY,
-Nombre VARCHAR(50),
-Precio INT,
-Stock INT)
+[HttpGet]
+[Route("ObtenerProductosConVentas")]
+public IActionResult ObtenerProductosConVentas()
+{
+    try
+    {
+        var productosConVentas = new List<ProductoVentaDto>();
 
-CREATE TABLE VentaVa(
-IdVenta INT IDENTITY PRIMARY KEY,
-Fecha DATE,
-IdEmpleado INT FOREIGN KEY REFERENCES EmpleadoVa(IdEmpleado),
-IdProducto INT FOREIGN KEY REFERENCES ProductoVa(Idproducto),
-Cantidad INT)
+        using (var conexion = new SqlConnection(cadenaSQL))
+        {
+            conexion.Open();
+            var cmd = new SqlCommand(@"
+                SELECT 
+                    p.IdProducto,
+                    p.Nombre,
+                    p.Precio,
+                    p.Stock,
+                    (
+                        SELECT SUM(v.Cantidad) 
+                        FROM VentaVa v 
+                        WHERE v.IdProducto = p.IdProducto
+                    ) AS TotalVendidos
+                FROM 
+                    ProductoVa p
+                WHERE 
+                    p.Stock > 0", conexion);
+
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var productoVenta = new ProductoVentaDto
+                    {
+                        IdProducto = (int)reader["IdProducto"],
+                        Nombre = reader["Nombre"].ToString(),
+                        Precio = (int)reader["Precio"],
+                        Stock = (int)reader["Stock"],
+                        TotalVendidos = reader["TotalVendidos"] as int? ?? 0 // Maneja posibles valores nulos
+                    };
+                    productosConVentas.Add(productoVenta);
+                }
+            }
+        }
+
+        return StatusCode(StatusCodes.Status200OK, new { mensaje = "Datos obtenidos", Response = productosConVentas });
+    }
+    catch (Exception error)
+    {
+        return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message });
+    }
+}
