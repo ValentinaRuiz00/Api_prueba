@@ -1,0 +1,200 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using WebApi.Models;
+using Microsoft.SqlServer;
+using Microsoft.Data.SqlClient;
+using System.Data;
+
+namespace WebApi.Controllers
+{
+    public class VentaController : ControllerBase
+    {
+        //variable de conexion 
+        private readonly string cadenaSQL;
+
+        //Constructor del controlador 
+        public VentaController(IConfiguration config)
+        {
+            cadenaSQL = config.GetConnectionString("CadenaSQL");
+        }
+
+        //Metodo listar
+        [HttpGet]
+        [Route("ConsultarVenta")]
+
+        public IActionResult ConsultarVenta()
+        {
+            List<VentaEntity> list = new List<VentaEntity>();
+            //Manejo de excepciones
+            try
+            {
+                using (var conexion = new SqlConnection(cadenaSQL))
+                {
+                    //abrir conexion
+                    conexion.Open();
+                    //Ejecutar procedimiento almacenado
+                    var cmd = new SqlCommand("sp_Venta_Consultar", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    //Lectura de resultados
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            list.Add(new VentaEntity()
+                            {
+                                IdVenta = Convert.ToInt32(rd["IdVenta"]),
+                                Fecha = DateTime(rd["Fecha"]),
+                                IdEmpleado = Convert.ToInt32(rd["IdEmpleado"]),
+                                IdProducto = Convert.ToInt32(rd["IdProducto"]),
+                                Cantidad = Convert.ToInt32(rd["Cantidad"])
+                            });
+                        }
+                    }
+                    //Retorno de respuesta Http
+                    return StatusCode(StatusCodes.Status200OK, new { mensaje = "Ok", Response = list });
+                }
+            }
+            catch (Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message, Response = list });
+            }
+
+        }
+
+        //metodo buscar por id
+        [HttpGet]
+        [Route("ObtenerVenta/{IdVenta:int}")]
+
+
+        public IActionResult ObtenerVenta(int IdVenta)
+        {
+            VentaEntity ventaEntity = new VentaEntity();
+            try
+            {
+                //Ejecutar procedimiento almacenado
+                using (var conexion = new SqlConnection(cadenaSQL))
+                {
+                    //Abrir conexion
+                    conexion.Open();
+                    //Ejecutar procedimiento almacenado 
+                    var cmd = new SqlCommand("sp_Venta_ConsultarId", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdVenta", IdVenta);
+                    //Leer datos
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            ventaEntity = new VentaEntity()
+                            {
+                                IdVenta = Convert.ToInt32(rd["IdVenta"]),
+                                Fecha = DateTime.(rd["Fecha"]),
+                                IdEmpleado = Convert.ToInt32(rd["IdEmpleado"]),
+                                IdProducto = Convert.ToInt32(rd["IdProducto"]),
+                                Cantidad = Convert.ToInt32(rd["Cantidad"])
+                            };
+                        }
+                    }
+
+                }
+                //Retorno de la respuesta http
+                return StatusCode(StatusCodes.Status200OK, new { mensaje = "Ok", Response = ventaEntity });
+
+            }
+            catch (Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message, Response = ventaEntity });
+            }
+        }
+
+        //metodo agregar 
+        [HttpPost]
+        [Route("AñadirVenta")]
+
+        public IActionResult AñadirVenta([FromBody] VentaEntity ventaEntity)
+        {
+            try
+            {
+                //
+                using (var conexion = new SqlConnection(cadenaSQL))
+                {
+                    //Abrir conexion
+                    conexion.Open();
+                    //Ejecutar procedimiento almacenado
+                    var cmd = new SqlCommand("sp_Venta_Agregar", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("Fecha", ventaEntity.Fecha);
+                    cmd.Parameters.AddWithValue("IdEmpleado", ventaEntity.IdEmpleado);
+                    cmd.Parameters.AddWithValue("IdProducto", ventaEntity.IdProducto);
+                    cmd.Parameters.AddWithValue("Cantidad", ventaEntity.Cantidad);
+                    cmd.ExecuteNonQuery();
+                }
+                //Retorno de la respuesta http
+                return StatusCode(StatusCodes.Status200OK, new { mensaje = "Venta añadida", Response = ventaEntity });
+            }
+            catch (Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message, Response = ventaEntity });
+            }
+        }
+
+        //metodo actualizar
+        [HttpPut]
+        [Route("ActualizarVenta")]
+
+        public IActionResult ActualizarVenta([FromBody] VentaEntity ventaEntity)
+        {
+            try
+            {
+                //Ejecutar procedimiento almacenado
+                using (var conexion = new SqlConnection(cadenaSQL))
+                {
+                    //Abrir conexion
+                    conexion.Open();
+                    var cmd = new SqlCommand("sp_Venta_Actualizar", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("Fecha", ventaEntity.Fecha is null ? DBNull.Value : ventaEntity.Fecha);
+                    cmd.Parameters.AddWithValue("IdEmpleado", ventaEntity.IdEmpleado == 0 ? DBNull.Value : ventaEntity.IdEmpleado);
+                    cmd.Parameters.AddWithValue("IdProducto", ventaEntity.IdProducto == 0 ? DBNull.Value : ventaEntity.IdProducto);
+                    cmd.Parameters.AddWithValue("Cantidad", ventaEntity.Cantidad == 0 ? DBNull.Value : ventaEntity.Cantidad);
+                    cmd.ExecuteNonQuery();
+                }
+                //Retorno de la respuesta http
+                return StatusCode(StatusCodes.Status200OK, new { mensaje = "Venta Editada", Response = ventaEntity });
+            }
+            catch (Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message, Response = ventaEntity });
+            }
+        }
+
+        //metodo eliminar
+        [HttpDelete]
+        [Route("EliminarVenta/{IdVenta:int}")]
+
+        public IActionResult EliminarVenta(int IdVenta)
+        {
+            try
+            {
+                //Ejecutar procedimiento almacenado
+                using (var conexion = new SqlConnection(cadenaSQL))
+                {
+                    //Abrir conexion
+                    conexion.Open();
+                    var cmd = new SqlCommand("sp_Venta_Eliminar", conexion);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("IdVenta", IdVenta);
+                    cmd.ExecuteNonQuery();
+                }
+                //Retorno de respuesta http
+                return StatusCode(StatusCodes.Status200OK, new { mensaje = "Venta Eliminada" });
+            }
+            catch (Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message, });
+            }
+        }
+    }
+
+}
