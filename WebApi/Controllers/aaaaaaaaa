@@ -1,0 +1,12 @@
+CREATE TABLE ProductoVa(
+IdProducto INT IDENTITY PRIMARY KEY,
+Nombre VARCHAR(50),
+Precio INT,
+Stock INT)
+
+CREATE TABLE VentaVa(
+IdVenta INT IDENTITY PRIMARY KEY,
+Fecha DATE,
+IdEmpleado INT FOREIGN KEY REFERENCES EmpleadoVa(IdEmpleado),
+IdProducto INT FOREIGN KEY REFERENCES ProductoVa(Idproducto),
+Cantidad INT)
